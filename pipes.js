@@ -1,88 +1,94 @@
-// Pipe Class - Obstacles
-class Pipe {
-  constructor(x, canvasHeight) {
-    this.x = x;
-    this.width = 52;
-    this.speed = 2.5;
-    this.gap = 160;
-    this.canvasHeight = canvasHeight;
-    this.gapY = 120 + Math.random() * (canvasHeight - 280);
-    this.passed = false;
-    this.color = '#2ecc71';
-    this.darkColor = '#27ae60';
-  }
+// Pipes - Enhanced Phase 2
+const PIPE_WIDTH = 52;
+const PIPE_GAP_BASE = 140;
+const PIPE_SPEED_BASE = 2.5;
+const PIPE_INTERVAL = 1600;
 
-  update() {
-    this.x -= this.speed;
-  }
+let pipes = [];
+let pipeTimer = 0;
+let pipeGap = PIPE_GAP_BASE;
+let pipeSpeed = PIPE_SPEED_BASE;
+let score = 0;
+let highScore = parseInt(localStorage.getItem('flappyHS')) || 0;
+let isRunning = false;
+let dailyChallengeMode = false;
+let dailyScore = 0;
 
-  draw(ctx) {
-    const topH = this.gapY;
-    const botY = this.gapY + this.gap;
-    const botH = this.canvasHeight - botY;
-
-    // Top pipe
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, 0, this.width, topH - 20);
-    // Top cap
-    ctx.fillStyle = this.darkColor;
-    ctx.fillRect(this.x - 4, topH - 20, this.width + 8, 20);
-    // Sheen
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(this.x + 6, 0, 8, topH - 20);
-
-    // Bottom pipe
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, botY + 20, this.width, botH);
-    // Bottom cap
-    ctx.fillStyle = this.darkColor;
-    ctx.fillRect(this.x - 4, botY, this.width + 8, 20);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(this.x + 6, botY + 20, 8, botH);
-  }
-
-  collidesWith(bird) {
-    const b = bird.getBounds();
-    const topRect = { x: this.x - 4, y: 0, w: this.width + 8, h: this.gapY };
-    const botRect = { x: this.x - 4, y: this.gapY + this.gap, w: this.width + 8, h: this.canvasHeight };
-    const overlaps = (r1, r2) =>
-      b.x < r2.x + r2.w && b.x + b.w > r2.x &&
-      b.y < r2.y + r2.h && b.y + b.h > r2.y;
-    return overlaps(b, topRect) || overlaps(b, botRect);
-  }
-
-  isOffScreen() { return this.x + this.width < 0; }
+function getDailyChallengeSeed() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-class PipeManager {
-  constructor(canvasWidth, canvasHeight) {
-    this.pipes = [];
-    this.canvasWidth = canvasWidth;
-    this.canvasHeight = canvasHeight;
-    this.spawnInterval = 90;
-    this.tick = 0;
-  }
+function resetPipes() {
+  pipes = []; pipeTimer = 0;
+  pipeGap = PIPE_GAP_BASE;
+  pipeSpeed = PIPE_SPEED_BASE;
+  score = 0;
+}
 
-  reset() { this.pipes = []; this.tick = 0; }
+function spawnPipe() {
+  const minY = 60, maxY = canvas.height - pipeGap - 60;
+  const topH = Math.floor(Math.random() * (maxY - minY) + minY);
+  pipes.push({ x: canvas.width, topH, scored: false });
+}
 
-  update() {
-    this.tick++;
-    if (this.tick % this.spawnInterval === 0) {
-      this.pipes.push(new Pipe(this.canvasWidth + 10, this.canvasHeight));
+function updatePipes(dt) {
+  pipeTimer += dt;
+  if (pipeTimer >= PIPE_INTERVAL) { spawnPipe(); pipeTimer = 0; }
+  pipes.forEach(p => { p.x -= pipeSpeed; });
+  pipes = pipes.filter(p => p.x + PIPE_WIDTH > -10);
+  // Score
+  const b = getBirdBounds();
+  pipes.forEach(p => {
+    if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
+      p.scored = true; score++;
+      if (score > highScore) { highScore = score; localStorage.setItem('flappyHS', highScore); }
+      // Increase difficulty
+      if (score % 5 === 0) {
+        pipeSpeed = Math.min(6, pipeSpeed + 0.2);
+        pipeGap = Math.max(95, pipeGap - 4);
+      }
     }
-    this.pipes.forEach(p => p.update());
-    this.pipes = this.pipes.filter(p => !p.isOffScreen());
-  }
+    // Collision
+    const inX = b.x < p.x + PIPE_WIDTH && b.x + b.w > p.x;
+    if (inX && (b.y < p.topH || b.y + b.h > p.topH + pipeGap)) {
+      endFlappyGame();
+    }
+  });
+  if (bird.y + BIRD_SIZE > canvas.height - 40 || bird.y - BIRD_SIZE < 0) endFlappyGame();
+}
 
-  draw(ctx) { this.pipes.forEach(p => p.draw(ctx)); }
+function drawPipes(ctx) {
+  pipes.forEach(p => {
+    // Top pipe
+    const grad1 = ctx.createLinearGradient(p.x, 0, p.x + PIPE_WIDTH, 0);
+    grad1.addColorStop(0, '#3a9d23'); grad1.addColorStop(0.5, '#4ec93b'); grad1.addColorStop(1, '#2d7a1b');
+    ctx.fillStyle = grad1;
+    ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topH);
+    // Cap
+    ctx.fillRect(p.x - 4, p.topH - 20, PIPE_WIDTH + 8, 20);
+    // Bottom pipe
+    const bY = p.topH + pipeGap;
+    ctx.fillStyle = grad1;
+    ctx.fillRect(p.x, bY, PIPE_WIDTH, canvas.height - bY);
+    ctx.fillRect(p.x - 4, bY, PIPE_WIDTH + 8, 20);
+  });
+}
 
-  checkCollision(bird) { return this.pipes.some(p => p.collidesWith(bird)); }
+function getMedal(s) {
+  if (s >= 40) return '🪥 Platinum';
+  if (s >= 25) return '🥇 Gold';
+  if (s >= 15) return '🥈 Silver';
+  if (s >= 5)  return '🥉 Bronze';
+  return '🟤 Tin';
+}
 
-  checkScore(birdX) {
-    let scored = 0;
-    this.pipes.forEach(p => {
-      if (!p.passed && birdX > p.x + p.width) { p.passed = true; scored++; }
-    });
-    return scored;
-  }
+function endFlappyGame() {
+  bird.alive = false; isRunning = false;
+  const medal = getMedal(score);
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('best-score').textContent = highScore;
+  document.getElementById('medal').textContent = medal;
+  document.getElementById('bg-name').textContent = BACKGROUNDS[activeBg].name;
+  document.getElementById('game-over-screen').classList.remove('hidden');
 }

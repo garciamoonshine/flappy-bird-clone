@@ -3,32 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flappy Bird</title>
+  <title>🐦 Flappy Bird</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    body { background:#1a1a2e; color:#fff; font-family:'Segoe UI',sans-serif; margin:0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+    #game-wrap { position:relative; display:inline-block; }
+    canvas { display:block; border-radius:10px; box-shadow:0 0 30px rgba(0,0,0,0.6); }
+    #ui { display:flex; gap:20px; justify-content:center; align-items:center; margin:10px 0; font-size:14px; }
+    #ui span { background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; }
+    #game-over-screen { position:absolute; inset:0; background:rgba(0,0,0,0.75); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+    #game-over-screen.hidden { display:none; }
+    #game-over-screen h2 { font-size:28px; margin:0; }
+    #medal { font-size:24px; }
+    .gо-btn { background:#4ec93b; color:#000; border:none; padding:10px 28px; border-radius:25px; font-size:16px; font-weight:bold; cursor:pointer; margin-top:5px; }
+    .gо-btn:hover { background:#5ee34a; }
+    #daily-btn { background:#ffd700; color:#333; border:none; padding:6px 16px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px; }
+    #start-screen { position:absolute; inset:0; background:rgba(0,0,0,0.7); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+    #start-screen.hidden { display:none; }
+    #start-screen h1 { font-size:32px; margin:0; }
+  </style>
 </head>
 <body>
+  <div id="ui">
+    <span>🏆 Score: <b id="score-display">0</b></span>
+    <span>🔥 Best: <b id="hs-display">0</b></span>
+    <button id="daily-btn">📅 Daily Challenge</button>
+  </div>
   <div id="game-wrap">
-    <canvas id="gameCanvas" width="360" height="640"></canvas>
-    <div id="ui-overlay">
-      <div id="start-screen">
-        <h1>🐦 Flappy Bird</h1>
-        <p>Tap or press Space to flap!</p>
-        <button id="startBtn">Play</button>
-        <div id="best-score">Best: <span id="best">0</span></div>
-      </div>
-      <div id="score-display" class="hidden">
-        <span id="current-score">0</span>
-      </div>
-      <div id="gameover-screen" class="hidden">
-        <h2>Game Over</h2>
-        <p>Score: <span id="go-score">0</span></p>
-        <p>Best: <span id="go-best">0</span></p>
-        <button id="retryBtn">Try Again</button>
-      </div>
+    <canvas id="gameCanvas" width="360" height="480"></canvas>
+    <div id="start-screen">
+      <h1>🐦 Flappy Bird</h1>
+      <p>Tap / Space / Click to flap</p>
+      <button class="gо-btn" id="startBtn">Start Game</button>
+    </div>
+    <div id="game-over-screen" class="hidden">
+      <h2>Game Over!</h2>
+      <div id="medal">🥉 Bronze</div>
+      <p>Score: <b id="final-score">0</b> &nbsp;|&nbsp; Best: <b id="best-score">0</b></p>
+      <p style="font-size:12px;color:#aaa">Background: <span id="bg-name"></span></p>
+      <button class="gо-btn" id="restartBtn">Play Again</button>
     </div>
   </div>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let lastTime = 0;
+    let animFrame;
+
+    function startGame() {
+      resetBird(); resetPipes();
+      isRunning = true;
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('game-over-screen').classList.add('hidden');
+      if (animFrame) cancelAnimationFrame(animFrame);
+      loop(performance.now());
+    }
+
+    function loop(ts) {
+      const dt = ts - lastTime; lastTime = ts;
+      if (isRunning) { updateBird(); updatePipes(dt); }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground(ctx, canvas);
+      drawPipes(ctx);
+      drawBird(ctx);
+      document.getElementById('score-display').textContent = score;
+      document.getElementById('hs-display').textContent = highScore;
+      animFrame = requestAnimationFrame(loop);
+    }
+
+    function flap() { if (isRunning) flapBird(); }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    document.getElementById('daily-btn').addEventListener('click', () => {
+      const seed = getDailyChallengeSeed();
+      alert('📅 Daily Challenge: ' + seed + '\nPipes are fixed today. Post your score!');
+      startGame();
+    });
+    canvas.addEventListener('click', flap);
+    document.addEventListener('keydown', e => { if (e.code === 'Space') { flap(); e.preventDefault(); } });
+    canvas.addEventListener('touchstart', e => { flap(); e.preventDefault(); }, { passive:false });
+
+    loop(0);
+  </script>
   <script src="bird.js"></script>
   <script src="pipes.js"></script>
-  <script src="game.js"></script>
 </body>
 </html>
