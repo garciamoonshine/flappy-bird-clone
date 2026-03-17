@@ -1,10 +1,12 @@
-// Pollinations AI Image Integration
+// Pollinations AI Image Integration - API v0.3.0
+// Base URL: https://gen.pollinations.ai
+// Docs: https://enter.pollinations.ai/api/docs
 const POLLINATIONS_TOKEN = 'sk_XAwK4NoIzJVceQNqn1SG22oDgJPkkMYA';
-const POLLINATIONS_BASE = 'https://image.pollinations.ai/prompt/';
+const POLLINATIONS_BASE = 'https://gen.pollinations.ai/image/';
 
 function getPollinationsUrl(prompt, width = 360, height = 480, seed = null) {
   const encoded = encodeURIComponent(prompt);
-  let url = `${POLLINATIONS_BASE}${encoded}?width=${width}&height=${height}&nologo=true&token=${POLLINATIONS_TOKEN}`;
+  let url = `${POLLINATIONS_BASE}${encoded}?width=${width}&height=${height}&nologo=true&key=${POLLINATIONS_TOKEN}`;
   if (seed !== null) url += `&seed=${seed}`;
   return url;
 }
@@ -27,7 +29,7 @@ async function preloadFlappyBackgrounds() {
       img.crossOrigin = 'anonymous';
       await new Promise((resolve) => {
         img.onload = resolve;
-        img.onerror = resolve; // continue even if one fails
+        img.onerror = resolve;
         img.src = getPollinationsUrl(bgPrompts[i], 360, 480, i * 7);
       });
       bgImages.push(img);
